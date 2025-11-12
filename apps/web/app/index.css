@@ -1,0 +1,20 @@
+.is-user {
+  a {
+    color: var(--color-primary-foreground);
+    @apply underline;
+  }
+}
+
+ul {
+  li {
+    @apply list-disc list-outside ml-[1.5rem];
+  }
+}
+
+sup {
+  font-size: var(--text-xs);
+}
+
+p:has(button) {
+  @apply flex flex-wrap gap-[0.5rem];
+}

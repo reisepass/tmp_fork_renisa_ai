@@ -1,0 +1,59 @@
+{
+  "name": "@renisa-ai/config",
+  "version": "0.0.0",
+  "private": true,
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "require": "./dist/index.js"
+    },
+    "./env": {
+      "types": "./dist/env.d.ts",
+      "import": "./dist/env.mjs",
+      "require": "./dist/env.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "import": "./dist/schema.mjs",
+      "require": "./dist/schema.js"
+    },
+    "./types": {
+      "types": "./dist/types.d.ts",
+      "import": "./dist/types.mjs",
+      "require": "./dist/types.js"
+    },
+    "./validations": {
+      "types": "./dist/validations.d.ts",
+      "import": "./dist/validations.mjs",
+      "require": "./dist/validations.js"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@renisa-ai/eslint-config": "workspace:*",
+    "@renisa-ai/typescript-config": "workspace:*",
+    "@types/node": "^24.10.0",
+    "ai": "5.0.88",
+    "tsup": "^8.0.1",
+    "typescript": "5.9.3"
+  },
+  "dependencies": {
+    "date-fns": "^4.1.0",
+    "lucide-react": "^0.552.0",
+    "type-fest": "^5.2.0",
+    "zod": "4.1.12"
+  },
+  "files": [
+    "dist",
+    "prettier.config.js"
+  ]
+}

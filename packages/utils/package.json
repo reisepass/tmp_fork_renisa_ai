@@ -1,0 +1,37 @@
+{
+  "name": "@renisa-ai/utils",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    }
+  },
+  "scripts": {
+    "build": "tsup",
+    "dev": "tsup --watch",
+    "clean": "rm -rf dist",
+    "type-check": "tsc --noEmit",
+    "lint": "eslint ."
+  },
+  "devDependencies": {
+    "@renisa-ai/eslint-config": "workspace:*",
+    "@renisa-ai/typescript-config": "workspace:*",
+    "@types/lodash.camelcase": "^4.3.9",
+    "lucide-react": "^0.552.0",
+    "tsup": "^8.0.1",
+    "type-fest": "^5.2.0",
+    "typescript": "5.9.3"
+  },
+  "files": [
+    "dist"
+  ],
+  "dependencies": {
+    "lodash.camelcase": "^4.3.0"
+  }
+}

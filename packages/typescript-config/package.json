@@ -1,0 +1,22 @@
+{
+  "name": "@renisa-ai/typescript-config",
+  "version": "0.0.0",
+  "private": true,
+  "publishConfig": {
+    "access": "public"
+  },
+  "files": [
+    "base.json",
+    "nextjs.json",
+    "react-native-library.json",
+    "library.json",
+    "node.json"
+  ],
+  "exports": {
+    "./base.json": "./base.json",
+    "./nextjs.json": "./nextjs.json",
+    "./react-native-library.json": "./react-native-library.json",
+    "./library.json": "./library.json",
+    "./node.json": "./node.json"
+  }
+}

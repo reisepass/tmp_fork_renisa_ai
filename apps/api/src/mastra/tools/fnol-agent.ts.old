@@ -1,0 +1,195 @@
+import { createTool } from "@mastra/core/tools";
+import { mainInputSchema, mainOutputSchema } from "@renisa-ai/config/schema";
+import { fnolDataSchema } from "@renisa-ai/config/schema";
+import { z } from "zod";
+import { createTracedMemory } from "../memory-tracing";
+
+/**
+ * FNOL Agent Tool
+ *
+ * Wraps the FNOL agent as a tool that can be called by the orchestrator.
+ * Unlike workflow tools, this directly calls the agent and manages state in agent memory.
+ */
+
+const fnolAgentInputSchema = mainInputSchema.extend({
+  collectedData: fnolDataSchema.nullable(),
+});
+
+const fnolAgentOutputSchema = mainOutputSchema.extend({
+  collectedData: fnolDataSchema.nullable(),
+  readyForSubmission: z.boolean().describe("Whether claim is ready to be submitted"),
+});
+
+export const fnolAgentTool = createTool({
+  id: "fnol-agent-tool",
+  description: `Call this tool when the user wants to report a claim (First Notice of Loss - FNOL) for their private liability insurance.
+
+This tool handles the entire claim reporting conversation through a specialized FNOL agent that:
+- Collects incident details through natural conversation
+- Classifies the type of damage (object, person, building, vehicle, animal, other)
+- Gathers all required information based on damage type
+- Validates data accuracy (especially dates and costs)
+- Avoids repetition and hallucination
+- Provides empathetic, supportive communication
+
+Use this tool when:
+- User mentions an incident, accident, or damage
+- User says they want to "report a claim" or "Schaden melden"
+- User describes something that went wrong (e.g., "I broke...", "My child damaged...")
+- User asks about claim reporting process
+
+The tool will handle the multi-turn conversation and return when ready for submission.`,
+
+  inputSchema: fnolAgentInputSchema,
+  outputSchema: fnolAgentOutputSchema,
+
+  async execute(args) {
+    const { context, mastra, runtimeContext, threadId, resourceId } = args;
+    const logger = mastra?.getLogger();
+
+    if (!threadId || !resourceId) {
+      logger?.error("FNOL agent tool called without thread/resource ID");
+      throw new Error("Thread ID and resource ID are required for FNOL agent");
+    }
+
+    const { userMessage, dataCollection } = fnolAgentInputSchema.parse(context);
+
+    logger?.info("FNOL agent tool invoked", {
+      threadId,
+      resourceId,
+      hasExistingData: !!dataCollection,
+      userMessageLength: userMessage?.length || 0,
+    });
+
+    try {
+      // Get the FNOL agent
+      const agent = mastra.getAgent("fnolAgent");
+
+      if (!agent) {
+        logger?.error("FNOL agent not found in Mastra instance");
+        throw new Error("FNOL agent not found");
+      }
+
+      logger?.debug("FNOL agent retrieved successfully");
+
+      // Get current collected data from working memory (if any)
+      const currentCollectedData = dataCollection || {};
+
+      logger?.info("Calling FNOL agent for data extraction", {
+        currentDamageType: currentCollectedData.damageType,
+        fieldsAlreadyCollected: Object.keys(currentCollectedData).filter(
+          (key) => currentCollectedData[key as keyof typeof currentCollectedData] != null
+        ).length,
+      });
+
+      // Call agent normally - it will use working memory to track state
+      const result = await agent.generate?.(userMessage, {
+        runtimeContext,
+        memory: {
+          thread: threadId,
+          resource: resourceId,
+        },
+        tracingOptions: {
+          metadata: {
+            ...Object.fromEntries(runtimeContext.entries() || []),
+            agentType: "fnol-agent",
+            toolName: "fnol-agent-tool",
+          },
+        },
+      });
+
+      if (!result?.text) {
+        logger?.error("FNOL agent did not return a response", {
+          resultKeys: result ? Object.keys(result) : [],
+        });
+        throw new Error("Agent did not return a response");
+      }
+
+      logger?.debug("FNOL agent returned response", {
+        responseLength: result.text.length,
+      });
+
+      // Get working memory to check collected data (with tracing)
+      const memory = agent.memory?.({ thread: threadId, resource: resourceId });
+      const tracedMemory = memory ? createTracedMemory(memory) : null;
+      let updatedCollectedData = currentCollectedData;
+      let readyForSubmission = false;
+
+      try {
+        // Try to get working memory data with tracing enabled
+        const workingMemoryData = await tracedMemory?.getWorkingMemory(
+          {
+            threadId,
+            resourceId,
+            memoryConfig: memory?.config,
+          },
+          {
+            tracingContext: runtimeContext,
+            enableTracing: true,
+          }
+        );
+
+        if (workingMemoryData) {
+          updatedCollectedData = {
+            ...currentCollectedData,
+            ...workingMemoryData,
+          };
+
+          logger?.info("Retrieved working memory data", {
+            fieldsCollected: Object.keys(workingMemoryData).filter(
+              (key) => workingMemoryData[key as keyof typeof workingMemoryData] != null
+            ).length,
+          });
+
+          // Check if we have minimum required fields for submission
+          const hasRequiredFields =
+            updatedCollectedData.damageType &&
+            updatedCollectedData.damageDescription &&
+            updatedCollectedData.incidentDate &&
+            updatedCollectedData.whoCausedDamage &&
+            updatedCollectedData.estimatedCost;
+
+          readyForSubmission = !!hasRequiredFields;
+        }
+      } catch (error) {
+        logger?.warn("Could not retrieve working memory", {
+          error: error instanceof Error ? error.message : String(error),
+        });
+      }
+
+      logger?.info("FNOL agent tool execution complete", {
+        readyForSubmission,
+        responseText: result.text.substring(0, 100) + "...",
+      });
+
+      // Use the agent's natural response
+      const messages = [result.text];
+
+      return {
+        messages,
+        dataCollection: updatedCollectedData,
+        collectedData: updatedCollectedData,
+        activeWorkflow: "fnol-agent",
+        readyForSubmission,
+      };
+
+    } catch (error) {
+      logger?.error("Error in FNOL agent tool", {
+        error: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined,
+        threadId,
+        resourceId,
+      });
+
+      return {
+        messages: [
+          "Entschuldigung, es gab einen technischen Fehler bei der Verarbeitung Ihrer Schadenmeldung. Bitte versuchen Sie es erneut.",
+        ],
+        dataCollection,
+        collectedData: dataCollection,
+        activeWorkflow: null,
+        readyForSubmission: false,
+      };
+    }
+  },
+});

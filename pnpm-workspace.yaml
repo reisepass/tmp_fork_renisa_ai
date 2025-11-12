@@ -1,0 +1,8 @@
+packages:
+  - apps/*
+  - packages/*
+  - packages/shared/packages/*
+  - '!packages/shared'
+
+onlyBuiltDependencies:
+  - esbuild

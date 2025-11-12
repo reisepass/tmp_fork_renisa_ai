@@ -1,0 +1,11 @@
+{
+  "name": "@renisa-ai/supabase",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "start": "supabase start --workdir .."
+  },
+  "dependencies": {
+    "supabase": "^2.54.11"
+  }
+}

@@ -1,0 +1,13 @@
+output.txt
+node_modules
+dist
+.mastra
+.env.development
+.env
+*.db
+*.db-*
+
+.vercel
+
+# Prompt cache (local development reference only)
+src/mastra/prompts/cache/
